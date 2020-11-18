@@ -1,0 +1,427 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: billing-django-static
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: billing-django-media
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: billing-django-conf
+data:
+  HOST: "billing.as207960.net,billing-nginx"
+  DJANGO_SETTINGS_MODULE: as207960_billing.settings
+  EXTERNAL_URL: "https://billing.as207960.net"
+  SENTRY_ENVIRONMENT: "prod"
+  KEYCLOAK_SERVER_URL: "https://sso.as207960.net/"
+  KEYCLOAK_REALM: master
+  KEYCLOAK_SCOPES: "openid email profile"
+  KEYCLOAK_CLIENT_ID: "billing"
+  STRIPE_PUBLIC_KEY: "pk_live_VLsjEC8QBoN5rQWW0rfVccqW00VzaknDP3"
+  DB_HOST: "cockroachdb"
+  DB_NAME: "billing"
+  EMAIL_HOST: "mx.postal.as207960.net"
+  EMAIL_HOST_USER: "apikey"
+  EMAIL_PORT: "25"
+  EMAIL_FROM: "=?UTF-8?q?AS207960=20Billing?= <billing@as207960.net>"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-django
+  labels:
+    app: billing
+    part: django
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing
+      part: django
+  template:
+    metadata:
+      annotations:
+        cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+      labels:
+        app: billing
+        part: django
+    spec:
+      volumes:
+        - name: static
+          persistentVolumeClaim:
+            claimName: billing-django-static
+        - name: media
+          persistentVolumeClaim:
+            claimName: billing-django-media
+      initContainers:
+        - name: django
+          image: as207960/billing-django:(version)
+          imagePullPolicy: Always
+          command: ["sh", "-c", "python3 manage.py collectstatic --noinput && python3 manage.py migrate && python3 manage.py sync-keycloak"]
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - mountPath: "/app/static/"
+              name: static
+            - mountPath: "/app/media/"
+              name: media
+          envFrom:
+            - configMapRef:
+                name: billing-django-conf
+            - secretRef:
+                name: billing-db-creds
+              prefix: "DB_"
+            - secretRef:
+                name: billing-django-secret
+            - secretRef:
+                name: billing-keycloak
+              prefix: "KEYCLOAK_"
+            - secretRef:
+                name: billing-stripe-secret
+            - secretRef:
+                name: billing-monzo-secret
+            - secretRef:
+                name: billing-open-exchange-secret
+            - secretRef:
+                name: billing-webpush
+            - secretRef:
+                name: billing-flux
+              prefix: "FLUX_"
+            - secretRef:
+                name: billing-gc
+              prefix: "GOCARDLESS_"
+            - secretRef:
+                name: billing-xfw
+              prefix: "TRANSFERWISE_"
+            - secretRef:
+                name: billing-email
+              prefix: "EMAIL_"
+      containers:
+        - name: gunicorn
+          image: as207960/billing-django:(version)
+          imagePullPolicy: Always
+          command: ["gunicorn", "-w", "8", "-b", "[::]:8000", "--forwarded-allow-ips", "*", "--access-logfile", "-", "--timeout=90", "as207960_billing.wsgi:application"]
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - mountPath: "/app/static/"
+              name: static
+            - mountPath: "/app/media/"
+              name: media
+          envFrom:
+            - configMapRef:
+                name: billing-django-conf
+            - secretRef:
+                name: billing-db-creds
+              prefix: "DB_"
+            - secretRef:
+                name: billing-django-secret
+            - secretRef:
+                name: billing-keycloak
+              prefix: "KEYCLOAK_"
+            - secretRef:
+                name: billing-stripe-secret
+            - secretRef:
+                name: billing-monzo-secret
+            - secretRef:
+                name: billing-open-exchange-secret
+            - secretRef:
+                name: billing-webpush
+            - secretRef:
+                name: billing-flux
+              prefix: "FLUX_"
+            - secretRef:
+                name: billing-gc
+              prefix: "GOCARDLESS_"
+            - secretRef:
+                name: billing-xfw
+              prefix: "TRANSFERWISE_"
+            - secretRef:
+                name: billing-email
+              prefix: "EMAIL_"
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: billing-get-exchange
+spec:
+  schedule: "17 */4 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+        spec:
+          volumes:
+            - name: static
+              persistentVolumeClaim:
+                claimName: billing-django-static
+            - name: media
+              persistentVolumeClaim:
+                claimName: billing-django-media
+          containers:
+            - name: django
+              image: as207960/billing-django:(version)
+              imagePullPolicy: Always
+              command: ["sh", "-c", "python3 manage.py sync-exchange"]
+              volumeMounts:
+                - mountPath: "/app/static/"
+                  name: static
+                - mountPath: "/app/media/"
+                  name: media
+              envFrom:
+                - configMapRef:
+                    name: billing-django-conf
+                - secretRef:
+                    name: billing-db-creds
+                  prefix: "DB_"
+                - secretRef:
+                    name: billing-django-secret
+                - secretRef:
+                    name: billing-keycloak
+                  prefix: "KEYCLOAK_"
+                - secretRef:
+                    name: billing-stripe-secret
+                - secretRef:
+                    name: billing-monzo-secret
+                - secretRef:
+                    name: billing-open-exchange-secret
+                - secretRef:
+                    name: billing-webpush
+                - secretRef:
+                    name: billing-flux
+                  prefix: "FLUX_"
+                - secretRef:
+                    name: billing-gc
+                  prefix: "GOCARDLESS_"
+                - secretRef:
+                    name: billing-xfw
+                  prefix: "TRANSFERWISE_"
+                - secretRef:
+                    name: billing-email
+                  prefix: "EMAIL_"
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: billing-attempt-reconcile
+spec:
+  schedule: "00 4 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+        spec:
+          volumes:
+            - name: static
+              persistentVolumeClaim:
+                claimName: billing-django-static
+            - name: media
+              persistentVolumeClaim:
+                claimName: billing-django-media
+          containers:
+            - name: django
+              image: as207960/billing-django:(version)
+              imagePullPolicy: Always
+              command: ["sh", "-c", "python3 manage.py attempt-reconcile"]
+              volumeMounts:
+                - mountPath: "/app/static/"
+                  name: static
+                - mountPath: "/app/media/"
+                  name: media
+              envFrom:
+                - configMapRef:
+                    name: billing-django-conf
+                - secretRef:
+                    name: billing-db-creds
+                  prefix: "DB_"
+                - secretRef:
+                    name: billing-django-secret
+                - secretRef:
+                    name: billing-keycloak
+                  prefix: "KEYCLOAK_"
+                - secretRef:
+                    name: billing-stripe-secret
+                - secretRef:
+                    name: billing-monzo-secret
+                - secretRef:
+                    name: billing-open-exchange-secret
+                - secretRef:
+                    name: billing-webpush
+                - secretRef:
+                    name: billing-flux
+                  prefix: "FLUX_"
+                - secretRef:
+                    name: billing-gc
+                  prefix: "GOCARDLESS_"
+                - secretRef:
+                    name: billing-xfw
+                  prefix: "TRANSFERWISE_"
+                - secretRef:
+                    name: billing-email
+                  prefix: "EMAIL_"
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: billing-run-billing
+spec:
+  schedule: "34 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+        spec:
+          volumes:
+            - name: static
+              persistentVolumeClaim:
+                claimName: billing-django-static
+            - name: media
+              persistentVolumeClaim:
+                claimName: billing-django-media
+          containers:
+            - name: django
+              image: as207960/billing-django:(version)
+              imagePullPolicy: Always
+              command: ["sh", "-c", "python3 manage.py run-billing"]
+              volumeMounts:
+                - mountPath: "/app/static/"
+                  name: static
+                - mountPath: "/app/media/"
+                  name: media
+              envFrom:
+                - configMapRef:
+                    name: billing-django-conf
+                - secretRef:
+                    name: billing-db-creds
+                  prefix: "DB_"
+                - secretRef:
+                    name: billing-django-secret
+                - secretRef:
+                    name: billing-keycloak
+                  prefix: "KEYCLOAK_"
+                - secretRef:
+                    name: billing-stripe-secret
+                - secretRef:
+                    name: billing-monzo-secret
+                - secretRef:
+                    name: billing-open-exchange-secret
+                - secretRef:
+                    name: billing-webpush
+                - secretRef:
+                    name: billing-flux
+                  prefix: "FLUX_"
+                - secretRef:
+                    name: billing-gc
+                  prefix: "GOCARDLESS_"
+                - secretRef:
+                    name: billing-xfw
+                  prefix: "TRANSFERWISE_"
+                - secretRef:
+                    name: billing-email
+                  prefix: "EMAIL_"
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: billing-update-pending
+spec:
+  schedule: "16 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+        spec:
+          volumes:
+            - name: static
+              persistentVolumeClaim:
+                claimName: billing-django-static
+            - name: media
+              persistentVolumeClaim:
+                claimName: billing-django-media
+          containers:
+            - name: django
+              image: as207960/billing-django:(version)
+              imagePullPolicy: Always
+              command: ["sh", "-c", "python3 manage.py update-pending"]
+              volumeMounts:
+                - mountPath: "/app/static/"
+                  name: static
+                - mountPath: "/app/media/"
+                  name: media
+              envFrom:
+                - configMapRef:
+                    name: billing-django-conf
+                - secretRef:
+                    name: billing-db-creds
+                  prefix: "DB_"
+                - secretRef:
+                    name: billing-django-secret
+                - secretRef:
+                    name: billing-keycloak
+                  prefix: "KEYCLOAK_"
+                - secretRef:
+                    name: billing-stripe-secret
+                - secretRef:
+                    name: billing-monzo-secret
+                - secretRef:
+                    name: billing-open-exchange-secret
+                - secretRef:
+                    name: billing-webpush
+                - secretRef:
+                    name: billing-flux
+                  prefix: "FLUX_"
+                - secretRef:
+                    name: billing-gc
+                  prefix: "GOCARDLESS_"
+                - secretRef:
+                    name: billing-xfw
+                  prefix: "TRANSFERWISE_"
+                - secretRef:
+                    name: billing-email
+                  prefix: "EMAIL_"
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-django
+  labels:
+    app: billing
+    part: django
+spec:
+  selector:
+    app: billing
+    part: django
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: gunicorn

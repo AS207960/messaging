@@ -98,6 +98,8 @@ spec:
             - secretRef:
                 name: messaging-celery
               prefix: "CELERY_"
+            - secretRef:
+                name: messaging-bm-partner-key-secret
       containers:
         - name: gunicorn
           image: as207960/messaging-django:(version)
@@ -126,6 +128,8 @@ spec:
             - secretRef:
                 name: messaging-celery
               prefix: "CELERY_"
+            - secretRef:
+                name: messaging-bm-partner-key-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -186,6 +190,8 @@ spec:
             - secretRef:
                 name: messaging-celery
               prefix: "CELERY_"
+            - secretRef:
+                name: messaging-bm-partner-key-secret
 ---
 apiVersion: v1
 kind: Service

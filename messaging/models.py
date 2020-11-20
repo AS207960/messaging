@@ -8,7 +8,7 @@ import io
 
 
 class Brand(models.Model):
-    id = as207960_utils.models.TypedUUIDField("messaging_brand", primary_key=True)
+    id = as207960_utils.models.TypedUUIDField("messaging_brand", primary_key=True, editable=False)
     name = models.CharField(max_length=255)
     webhook_url = models.URLField()
     resource_id = models.UUIDField(null=True, db_index=True)
@@ -49,7 +49,7 @@ class Brand(models.Model):
 
 
 class Representative(models.Model):
-    id = as207960_utils.models.TypedUUIDField("messaging_representative", primary_key=True)
+    id = as207960_utils.models.TypedUUIDField("messaging_representative", primary_key=True, editable=False)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
     is_bot = models.BooleanField(blank=True)
     name = models.CharField(max_length=255, blank=True, null=True)
@@ -95,7 +95,7 @@ class Message(models.Model):
         (STATE_FAILED, "Failed"),
     )
 
-    id = as207960_utils.models.TypedUUIDField("messaging_message", primary_key=True)
+    id = as207960_utils.models.TypedUUIDField("messaging_message", primary_key=True, editable=False)
     direction = models.CharField(max_length=1, choices=DIRECTIONS)
     state = models.CharField(max_length=1, choices=STATES, default=STATE_ACCEPTED)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)

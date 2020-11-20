@@ -52,8 +52,10 @@ def send_message(message_id):
         post_sig = post_hmac.hexdigest()
 
         r = requests.post(message.brand.webhook_url, headers={
-            "X-AS207960-Signature-SHA512": post_sig
-        }, body=post_data)
+            "X-AS207960-Signature-SHA512": post_sig,
+            "Content-Type": "application/json",
+            "User-Agent": "AS207960 Messaging Service"
+        }, data=post_data)
         r.raise_for_status()
         message.status = message.STATE_DISPATCHED
         message.save()

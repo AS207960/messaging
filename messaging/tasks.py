@@ -55,3 +55,5 @@ def send_message(message_id):
             "X-AS207960-Signature-SHA512": post_sig
         }, body=post_data)
         r.raise_for_status()
+        message.status = message.STATE_DISPATCHED
+        message.save()

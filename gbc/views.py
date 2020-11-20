@@ -3,7 +3,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.conf import settings
+from django.core.files import File
+from django.core.files.storage import default_storage
+import urllib.parse
 from . import models
+import os.path
+import requests
+import uuid
 import messaging.models
 import hmac
 import base64
@@ -69,8 +75,29 @@ def bm_webhook(request):
 
     if "message" in body_json:
         new_message.platform_message_id = body_json["message"]["name"]
-        new_message.content = body_json["message"]["text"]
-        new_message.media_type = "text"
+        message_text = body_json["message"]["text"]
+        is_img_url = False
+        try:
+            url_parts = urllib.parse.urlparse(message_text)
+            if url_parts.netloc == "storage.googleapis.com":
+                is_img_url = True
+        except ValueError:
+            pass
+
+        if not is_img_url:
+            new_message.content = body_json["message"]["text"]
+            new_message.media_type = "text"
+        else:
+            img = requests.get(message_text)
+            img.raise_for_status()
+            img_name = os.path.basename(message_text)
+            img_path = default_storage.save(img_name, File(img.raw))
+            img_url = settings.MEDIA_ROOT + img_path
+            new_message.content = {
+                "url": img_url,
+                "media_type": img.headers.get("content-type")
+            }
+            new_message.media_type = "file"
     elif "receipts" in body_json:
         for receipt in body_json["receipts"]["receipts"]:
             ref_message = messaging.models.Message.objects.filter(

@@ -159,7 +159,7 @@ spec:
           secret:
             secretName: messaging-google-bm-creds
       containers:
-        - name: grpc
+        - name: celery
           image: as207960/messaging-django:(version)
           imagePullPolicy: Always
           command: ["celery",  "-A", "as207960_messaging", "worker", "--loglevel=INFO", "-c", "32"]

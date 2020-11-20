@@ -10,6 +10,7 @@ import base64
 import binascii
 import json
 import dateutil.parser
+import messaging.tasks
 
 
 @csrf_exempt
@@ -85,6 +86,8 @@ def bm_webhook(request):
                 ref_message.metadata = new_metadata
                 ref_message.save()
 
+            messaging.tasks.send_message.delay(ref_message.id)
+
         return HttpResponse(status=200)
     elif "userStatus" in body_json:
         if "isTyping" in body_json["userStatus"]:
@@ -118,5 +121,6 @@ def bm_webhook(request):
         }
 
     new_message.save()
+    messaging.tasks.process_message.delay(new_message.id)
 
     return HttpResponse(status=200)

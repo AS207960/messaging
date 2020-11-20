@@ -47,8 +47,8 @@ class BrandPermissionPrimaryKeyRelatedFieldValidator:
     requires_context = True
 
     def __call__(self, value, ctx):
-        if not value.brand.has_scope(ctx.auth_token, 'view') or value.brand_id != ctx.brand:
-            raise serializers.ValidationError("you don't have permission to reference this object")
+        if (not value.brand.has_scope(ctx.auth_token, 'view') or value.brand_id != ctx.brand) or not ctx.auth_token:
+                raise serializers.ValidationError("you don't have permission to reference this object")
 
 
 class BrandPermissionPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
@@ -125,14 +125,16 @@ class MessageSerializer(serializers.ModelSerializer, WriteOnceMixin):
         lookup_url_kwarg='pk',
         parent_lookup_kwargs={'brand_pk': 'brand__pk'},
         view_name='brand-representatives-detail',
-        read_only=True
+        read_only=True,
+        allow_null=True
     )
     representative = BrandPermissionPrimaryKeyRelatedField(model=models.Representative, allow_null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["representative"].brand = self.context['view'].kwargs['brand_pk']
-        self.fields["representative"].auth_token = self.context['request'].auth.token
+        if 'request' in self.context:
+            self.fields["representative"].auth_token = self.context['request'].auth.token
 
     def to_representation(self, instance: models.Message):
         ret = {
@@ -148,8 +150,10 @@ class MessageSerializer(serializers.ModelSerializer, WriteOnceMixin):
             "error_description": instance.error_description,
             "brand_url": self.fields["brand_url"].to_representation(instance),
             "brand": self.fields["brand"].to_representation(instance),
-            "representative_url": self.fields["representative_url"].to_representation(instance),
-            "representative": self.fields["representative"].to_representation(instance),
+            "representative_url": self.fields["representative_url"].to_representation(instance.representative)
+            if instance.representative else None,
+            "representative": self.fields["representative"].to_representation(instance.representative)
+            if instance.representative else None,
         }
 
         if instance.direction == models.Message.DIRECTION_INCOMING:

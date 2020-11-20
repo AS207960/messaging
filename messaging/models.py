@@ -5,12 +5,14 @@ from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from PIL import Image
 import io
+import uuid
 
 
 class Brand(models.Model):
     id = as207960_utils.models.TypedUUIDField("messaging_brand", primary_key=True, editable=False)
     name = models.CharField(max_length=255)
     webhook_url = models.URLField()
+    webhook_signing_secret = models.CharField(max_length=255, default=uuid.uuid4)
     resource_id = models.UUIDField(null=True, db_index=True)
 
     def __str__(self):

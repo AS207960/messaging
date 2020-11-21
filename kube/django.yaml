@@ -33,6 +33,7 @@ data:
   SENTRY_ENVIRONMENT: "prod"
   DB_HOST: "cockroachdb"
   DB_NAME: "messaging"
+  PAT_URL: "http://oauth-nginx"
   KEYCLOAK_SERVER_URL: "https://sso.as207960.net/"
   KEYCLOAK_REALM: master
   KEYCLOAK_SCOPES: "openid email profile"

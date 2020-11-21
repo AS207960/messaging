@@ -47,7 +47,7 @@ def send_message(message_id):
             return
         if message.content["state"] == "composing":
             body["eventType"] = "TYPING_STARTED"
-        elif message.content["state"] == "composing_stopped":
+        elif message.content["state"] == "paused":
             body["eventType"] = "TYPING_STOPPED"
         elif message.content["state"] == "representative_joined":
             body["eventType"] = "REPRESENTATIVE_JOINED"
@@ -60,7 +60,7 @@ def send_message(message_id):
         body["messageId"] = message.id
         if message.media_type == "text":
             body["text"] = message.content
-        elif message.media_type == "gbm_card":
+        elif message.media_type == "gbm.card":
             body["richCard"] = message.content
         else:
             return

@@ -10,7 +10,7 @@ import urllib.parse
 from . import models
 import os.path
 import requests
-import uuid
+import mimetypes
 import messaging.models
 import hmac
 import base64
@@ -94,10 +94,15 @@ def bm_webhook(request):
             img.raise_for_status()
             img_name = os.path.basename(url_parts.path)
             img_path = default_storage.save(img_name, ContentFile(img.content))
-            img_url = settings.MEDIA_URL + img_path
+            img_type = img.headers.get("content-type")
+            if img_type:
+                ext = mimetypes.guess_extension(img_type, strict=False)
+            else:
+                ext = ""
+            img_url = settings.MEDIA_URL + img_path + ext
             new_message.content = {
                 "url": img_url,
-                "media_type": img.headers.get("content-type")
+                "media_type": img_type
             }
             new_message.media_type = "file"
     elif "receipts" in body_json:

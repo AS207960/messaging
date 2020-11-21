@@ -67,7 +67,7 @@ class Representative(models.Model):
                 background.paste(img, img.split()[-1])
                 img = background
             img.save(output, format='PNG', quality=50, optimise=True)
-            self.avatar.save("%s.png" % self.avatar.name.split('.')[0], ContentFile(output.getvalue()), save=True)
+            self.avatar.save("%s.png" % self.avatar.name.split('.')[0], ContentFile(output.getvalue()), save=False)
         super().save(*args, **kwargs)
 
 

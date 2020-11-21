@@ -183,3 +183,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 25
 }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"level": "DEBUG", "filters": None, "class": "logging.StreamHandler"}
+    },
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO"},
+        "gbc": {"handlers": ["console"], "level": "INFO"},
+        "messaging": {"handlers": ["console"], "level": "INFO"},
+    },
+}

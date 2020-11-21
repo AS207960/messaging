@@ -93,12 +93,12 @@ def bm_webhook(request):
             img = requests.get(message_text, stream=True)
             img.raise_for_status()
             img_name = os.path.basename(url_parts.path)
-            img_path = default_storage.save(img_name, ContentFile(img.content))
             img_type = img.headers.get("content-type")
             if img_type:
                 ext = mimetypes.guess_extension(img_type, strict=False)
             else:
                 ext = ""
+            img_path = default_storage.save(img_name + ext, ContentFile(img.content))
             img_url = settings.MEDIA_URL + img_path + ext
             new_message.content = {
                 "url": img_url,

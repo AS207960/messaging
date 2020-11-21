@@ -99,7 +99,7 @@ def bm_webhook(request):
             else:
                 ext = ""
             img_path = default_storage.save(img_name + ext, ContentFile(img.content))
-            img_url = settings.MEDIA_URL + img_path + ext
+            img_url = settings.MEDIA_URL + img_path
             new_message.content = {
                 "url": img_url,
                 "media_type": img_type

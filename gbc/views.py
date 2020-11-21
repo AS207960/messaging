@@ -93,7 +93,7 @@ def bm_webhook(request):
             img.raise_for_status()
             img_name = os.path.basename(url_parts.path)
             img_path = default_storage.save(img_name, File(img.raw))
-            img_url = settings.MEDIA_ROOT + img_path
+            img_url = settings.MEDIA_URL + img_path
             new_message.content = {
                 "url": img_url,
                 "media_type": img.headers.get("content-type")

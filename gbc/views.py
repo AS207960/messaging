@@ -77,12 +77,13 @@ def bm_webhook(request):
         new_message.platform_message_id = body_json["message"]["name"]
         message_text = body_json["message"]["text"]
         is_img_url = False
+        url_parts = None
         try:
             url_parts = urllib.parse.urlparse(message_text)
             if url_parts.netloc == "storage.googleapis.com":
                 is_img_url = True
         except ValueError:
-            pass
+            is_img_url = False
 
         if not is_img_url:
             new_message.content = body_json["message"]["text"]
@@ -90,7 +91,7 @@ def bm_webhook(request):
         else:
             img = requests.get(message_text)
             img.raise_for_status()
-            img_name = os.path.basename(message_text)
+            img_name = os.path.basename(url_parts.path)
             img_path = default_storage.save(img_name, File(img.raw))
             img_url = settings.MEDIA_ROOT + img_path
             new_message.content = {

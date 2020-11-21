@@ -5,6 +5,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbid
 from django.conf import settings
 from django.core.files import File
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 import urllib.parse
 from . import models
 import os.path
@@ -89,10 +90,10 @@ def bm_webhook(request):
             new_message.content = body_json["message"]["text"]
             new_message.media_type = "text"
         else:
-            img = requests.get(message_text)
+            img = requests.get(message_text, stream=True)
             img.raise_for_status()
             img_name = os.path.basename(url_parts.path)
-            img_path = default_storage.save(img_name, File(img.raw))
+            img_path = default_storage.save(img_name, ContentFile(img.content))
             img_url = settings.MEDIA_URL + img_path
             new_message.content = {
                 "url": img_url,

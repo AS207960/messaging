@@ -57,6 +57,5 @@ class RepresentativeSet(
 
     def perform_create(self, serializer: serializers.RepresentativeSerializer):
         serializer.save(
-            brand_id=self.kwargs['brand_pk'],
-            force_insert=False
+            brand_id=self.kwargs['brand_pk']
         )

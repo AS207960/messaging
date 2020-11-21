@@ -150,7 +150,7 @@ class MessageSerializer(serializers.ModelSerializer, WriteOnceMixin):
             "error_description": instance.error_description,
             "brand_url": self.fields["brand_url"].to_representation(instance),
             "brand": self.fields["brand"].to_representation(instance),
-            "representative_url": self.fields["representative_url"].to_representation(instance.representative)
+            "representative_url": self.fields["representative_url"].to_representation(instance)
             if instance.representative else None,
             "representative": self.fields["representative"].to_representation(instance.representative)
             if instance.representative else None,

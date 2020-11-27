@@ -36,7 +36,7 @@ data:
   PAT_URL: "http://oauth-nginx"
   KEYCLOAK_SERVER_URL: "https://sso.as207960.net/"
   KEYCLOAK_REALM: master
-  KEYCLOAK_SCOPES: "openid email profile"
+  KEYCLOAK_SCOPES: "openid email profile offline_access"
   KEYCLOAK_CLIENT_ID: "messaging"
   BM_SA_LOCATION: "/google-bm-creds/bm-sa.json"
 ---

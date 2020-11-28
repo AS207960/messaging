@@ -21,3 +21,13 @@ class BusinessMessagingAgent(models.Model):
 
     def __str__(self):
         return f"({self.brand.brand.name}) {self.name}"
+
+
+# class OAuthState(models.Model):
+#     id = models.UUIDField(unique=True, primary_key=True, default=uuid.uuid4)
+#     conversation = models.ForeignKey(
+#         ConversationPlatform,
+#         on_delete=models.CASCADE,
+#         related_name="apple_business_chat_account_linking_state",
+#     )
+#     timestamp = models.DateTimeField(auto_now_add=True)

@@ -20,6 +20,10 @@ import dateutil.parser
 import messaging.tasks
 
 
+def oauth_auth(request):
+    return HttpResponse(status=200)
+
+
 @csrf_exempt
 @require_POST
 def bm_webhook(request):
@@ -102,7 +106,9 @@ def bm_webhook(request):
             img_url = settings.MEDIA_URL + img_path
             new_message.content = {
                 "url": img_url,
-                "media_type": img_type
+                "media_type": img_type,
+                "title": None,
+                "text": None
             }
             new_message.media_type = "file"
     elif "receipts" in body_json:

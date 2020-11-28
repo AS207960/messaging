@@ -14,6 +14,8 @@ class Brand(models.Model):
     webhook_url = models.URLField()
     webhook_signing_secret = models.CharField(max_length=255, default=uuid.uuid4)
     resource_id = models.UUIDField(null=True, db_index=True)
+    authorization_url = models.URLField(blank=True, null=True)
+    client_id = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.name

@@ -3,6 +3,7 @@ import messaging.models
 import google.oauth2.service_account
 import google.auth.transport.requests
 from django.conf import settings
+import secrets
 
 credentials = google.oauth2.service_account.Credentials.from_service_account_file(
     settings.GBM_SERVICE_ACCOUNT_FILE,
@@ -54,6 +55,8 @@ def send_message(message_id):
         elif message.content["state"] == "representative_left":
             body["eventType"] = "REPRESENTATIVE_LEFT"
         else:
+            message.state = message.STATE_FAILED
+            message.error_description = "Invalid message"
             return
     else:
         url = f"https://businessmessages.googleapis.com/v1/conversations/{message.platform_conversation_id}/messages"
@@ -62,7 +65,86 @@ def send_message(message_id):
             body["text"] = message.content
         elif message.media_type == "gbm.card":
             body["richCard"] = message.content
+        elif message.media_type == "select":
+            if not ("media_type" in message.content and "options" in message.content and "content" in message.content):
+                message.state = message.STATE_FAILED
+                message.error_description = "Invalid message"
+                message.save()
+                return
+
+            if message.content["media_type"] == "text":
+                body["text"] = message.content
+            elif message.content["media_type"] == "gbm.card":
+                body["richCard"] = message.content
+
+            body["suggestions"] = []
+            for option in message.content["options"]:
+                if not ("media_type" in option, "content" in option):
+                    message.state = message.STATE_FAILED
+                    message.error_description = "Invalid message"
+                    message.save()
+                    return
+
+                if option["media_type"] == "text":
+                    suggestion = {
+                        "reply": {
+                            "text": option["content"],
+                            "postbackData": option.get("postback")
+                        }
+                    }
+                elif option["media_type"] == "url":
+                    content = option["content"]
+                    if not ("url" in content, "text" in content):
+                        message.state = message.STATE_FAILED
+                        message.error_description = "Invalid message"
+                        message.save()
+                        return
+                    suggestion = {
+                        "action": {
+                            "text": content["text"],
+                            "postbackData": option.get("postback"),
+                            "openUrlAction": {
+                                "url": option["url"]
+                            }
+                        }
+                    }
+                elif option["media_type"] == "dial":
+                    content = option["content"]
+                    if not ("number" in content, "text" in content):
+                        message.state = message.STATE_FAILED
+                        message.error_description = "Invalid message"
+                        message.save()
+                        return
+                    suggestion = {
+                        "action": {
+                            "text": content["text"],
+                            "postbackData": option.get("postback"),
+                            "dialAction": {
+                                "phoneNumber": option["number"]
+                            }
+                        }
+                    }
+                elif option["media_type"] == "login":
+                    suggestion = {
+                        "authenticationRequest": {
+                            "oauth": {
+                                "clientId": message.brand.brand.id,
+                                "codeChallenge": secrets.token_urlsafe(32),
+                                "scopes": [],
+                            }
+                        }
+                    }
+                else:
+                    message.state = message.STATE_FAILED
+                    message.error_description = "Invalid message"
+                    message.save()
+                    return
+
+                body["suggestions"].append(suggestion)
         else:
+            message.state = message.STATE_FAILED
+            message.error_description = "Invalid message"
+            message.save()
             return
 
     if url and body:

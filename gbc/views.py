@@ -111,6 +111,24 @@ def bm_webhook(request):
                 "text": None
             }
             new_message.media_type = "file"
+    elif "suggestionResponse" in body_json:
+        response = body_json["suggestionResponse"]
+        ref_message = messaging.models.Message.objects.filter(
+            platform=messaging.models.Message.PLATFORM_GBM, platform_message_id=response["message"]
+        ).first()
+        if ref_message:
+            new_message.metadata["ref_message_id"] = \
+                ref_message.client_message_id if ref_message.client_message_id else ref_message.id
+        if response["type"] == "REPLY":
+            new_message.content = response["text"]
+            new_message.media_type = "text"
+            new_message.metadata["postback_data"] = response["postbackData"]
+        elif response["TYPE"] == "ACTION":
+            new_message.content = {
+                "text": response["text"],
+                "postback_data": response["postbackData"]
+            }
+            new_message.media_type = "action_postback"
     elif "receipts" in body_json:
         for receipt in body_json["receipts"]["receipts"]:
             ref_message = messaging.models.Message.objects.filter(
@@ -144,21 +162,6 @@ def bm_webhook(request):
     elif "surveyResponse" in body_json:
         new_message.media_type = "gbm_survey"
         new_message.content = body_json["surveyResponse"]
-    elif "suggestionResponse" in body_json:
-        new_message.media_type = "postback"
-        postback = body_json["suggestionResponse"]
-        ref_message = messaging.models.Message.objects.filter(
-            platform=messaging.models.Message.PLATFORM_GBM, platform_message_id=postback["message"]
-        ).first()
-        new_message.content = {
-            "ref_message_id": (
-                ref_message.client_message_id if ref_message.client_message_id else ref_message.id
-            ) if ref_message else None,
-            "data": postback["postbackData"],
-            "text": postback["text"],
-            "action_type": "reply" if postback["type"] == "REPLY" else (
-                "action" if postback["type"] == "ACTION" else None)
-        }
 
     new_message.save()
     messaging.tasks.process_message.delay(new_message.id)

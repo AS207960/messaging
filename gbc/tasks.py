@@ -73,9 +73,9 @@ def send_message(message_id):
                 return
 
             if message.content["media_type"] == "text":
-                body["text"] = message.content
+                body["text"] = message.content["content"]
             elif message.content["media_type"] == "gbm.card":
-                body["richCard"] = message.content
+                body["richCard"] = message.content["content"]
 
             body["suggestions"] = []
             for option in message.content["options"]:

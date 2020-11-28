@@ -123,7 +123,7 @@ def bm_webhook(request):
             new_message.content = response["text"]
             new_message.media_type = "text"
             new_message.metadata["postback_data"] = response["postbackData"]
-        elif response["TYPE"] == "ACTION":
+        elif response["type"] == "ACTION":
             new_message.content = {
                 "text": response["text"],
                 "postback_data": response["postbackData"]

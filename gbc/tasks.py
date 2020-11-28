@@ -94,7 +94,7 @@ def send_message(message_id):
                     }
                 elif option["media_type"] == "url":
                     content = option["content"]
-                    if not ("url" in content, "text" in content):
+                    if not ("url" in content and "text" in content):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
@@ -104,13 +104,13 @@ def send_message(message_id):
                             "text": content["text"],
                             "postbackData": option.get("postback", content["text"]),
                             "openUrlAction": {
-                                "url": option["url"]
+                                "url": content["url"]
                             }
                         }
                     }
                 elif option["media_type"] == "dial":
                     content = option["content"]
-                    if not ("number" in content, "text" in content):
+                    if not ("number" in content and "text" in content):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
@@ -120,7 +120,7 @@ def send_message(message_id):
                             "text": content["text"],
                             "postbackData": option.get("postback", content["text"]),
                             "dialAction": {
-                                "phoneNumber": option["number"]
+                                "phoneNumber": content["number"]
                             }
                         }
                     }

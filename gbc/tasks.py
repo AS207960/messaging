@@ -89,7 +89,7 @@ def send_message(message_id):
                     suggestion = {
                         "reply": {
                             "text": option["content"],
-                            "postbackData": option.get("postback")
+                            "postbackData": option.get("postback", option["content"])
                         }
                     }
                 elif option["media_type"] == "url":
@@ -102,7 +102,7 @@ def send_message(message_id):
                     suggestion = {
                         "action": {
                             "text": content["text"],
-                            "postbackData": option.get("postback"),
+                            "postbackData": option.get("postback", content["text"]),
                             "openUrlAction": {
                                 "url": option["url"]
                             }
@@ -118,7 +118,7 @@ def send_message(message_id):
                     suggestion = {
                         "action": {
                             "text": content["text"],
-                            "postbackData": option.get("postback"),
+                            "postbackData": option.get("postback", content["text"]),
                             "dialAction": {
                                 "phoneNumber": option["number"]
                             }

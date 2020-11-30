@@ -13,7 +13,8 @@ session = google.auth.transport.requests.AuthorizedSession(credentials)
 
 
 @shared_task(
-    autoretry_for=(Exception,), retry_backoff=1, retry_backoff_max=60, max_retries=None, default_retry_delay=3
+    autoretry_for=(Exception,), retry_backoff=1, retry_backoff_max=60, max_retries=None, default_retry_delay=3,
+    ignore_result=True
 )
 def send_message(message_id):
     message = messaging.models.Message.objects.get(id=message_id)

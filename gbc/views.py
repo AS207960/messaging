@@ -40,10 +40,10 @@ def oauth_auth(request):
     ):
         return HttpResponseBadRequest()
 
-    brand = models.Brand.objects.filter(id=request.GET["client_id"]).first()
-    if not brand:
+    gbc_brand = models.Brand.objects.filter(id=request.GET["client_id"]).first()
+    if not gbc_brand:
         return HttpResponseBadRequest()
-    brand = brand.brand
+    brand = gbc_brand.brand
 
     if not brand.authorization_url or not brand.client_id:
         return HttpResponseBadRequest()
@@ -53,7 +53,7 @@ def oauth_auth(request):
         "client_id": brand.client_id,
         "scope": "openid",
         "response_type": "code",
-        "redirect_uri": settings.EXTERNAL_URL_BASE + reverse('messaging_oauth_redirect'),
+        "redirect_uri": settings.EXTERNAL_URL_BASE + reverse('messaging:messaging_oauth_redirect'),
     }
     url_parts = list(urllib.parse.urlparse(auth_url))
     query_parts = dict(urllib.parse.parse_qsl(url_parts[4]))

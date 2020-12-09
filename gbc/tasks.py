@@ -131,7 +131,7 @@ def send_message(message_id):
                             "oauth": {
                                 "clientId": message.brand.brand.id,
                                 "codeChallenge": secrets.token_urlsafe(32),
-                                "scopes": [],
+                                "scopes": ["openid"],
                             }
                         }
                     }

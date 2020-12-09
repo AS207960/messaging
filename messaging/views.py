@@ -23,7 +23,7 @@ def oauth_redirect(request):
         elif "code" in request.GET:
             state.auth_code = str(request.GET["code"])
             state.save()
-            auth_params["code"] = "as207960-success"
+            auth_params["code"] = str(state.id)
         else:
             return HttpResponseBadRequest()
 

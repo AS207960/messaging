@@ -209,6 +209,19 @@ def bm_webhook(request):
     elif "surveyResponse" in body_json:
         new_message.media_type = "gbm_survey"
         new_message.content = body_json["surveyResponse"]
+    elif "authenticationResponse" is body_json:
+        if body_json["authenticationResponse"].get("code"):
+            state = models.OAuthState.objects.filter(id=str(body_json["authenticationResponse"]["code"])).first()
+            if state:
+                new_message.media_type = "oauth_code"
+                new_message.content = state.auth_code
+            else:
+                return HttpResponse(status=200)
+        elif body_json["authenticationResponse"].get("errorDetails", {}).get("error"):
+            new_message.media_type = "oauth_error"
+            new_message.content = body_json["authenticationResponse"]["errorDetails"]["error"]
+        else:
+            return HttpResponse(status=200)
 
     new_message.save()
     messaging.tasks.process_message.delay(new_message.id)

@@ -24,7 +24,7 @@ import messaging.tasks
 def oauth_auth(request):
     if not (
         "client_id" in request.GET and "scope" in request.GET and "response_type" in request.GET
-        and "redirect_uri" in request.GET
+        and "redirect_uri" in request.GET and "state" in request.GET
     ):
         return HttpResponseBadRequest()
 
@@ -48,12 +48,19 @@ def oauth_auth(request):
     if not brand.authorization_url or not brand.client_id:
         return HttpResponseBadRequest()
 
+    oauth_state = models.OAuthState(
+        google_state=request.GET["state"],
+        redirect_uri=redirect_uri,
+    )
+    oauth_state.save()
+
     auth_url = brand.authorization_url
     auth_params = {
         "client_id": brand.client_id,
         "scope": "openid",
         "response_type": "code",
         "redirect_uri": settings.EXTERNAL_URL_BASE + reverse('messaging:messaging_oauth_redirect'),
+        "state": str(oauth_state.id),
     }
     url_parts = list(urllib.parse.urlparse(auth_url))
     query_parts = dict(urllib.parse.parse_qsl(url_parts[4]))

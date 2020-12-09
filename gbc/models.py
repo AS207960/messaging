@@ -23,11 +23,8 @@ class BusinessMessagingAgent(models.Model):
         return f"({self.brand.brand.name}) {self.name}"
 
 
-# class OAuthState(models.Model):
-#     id = models.UUIDField(unique=True, primary_key=True, default=uuid.uuid4)
-#     conversation = models.ForeignKey(
-#         ConversationPlatform,
-#         on_delete=models.CASCADE,
-#         related_name="apple_business_chat_account_linking_state",
-#     )
-#     timestamp = models.DateTimeField(auto_now_add=True)
+class OAuthState(models.Model):
+    id = as207960_utils.models.TypedUUIDField("messaging_gbcauthstate", primary_key=True)
+    google_state = models.TextField()
+    redirect_uri = models.URLField()
+    auth_code = models.TextField(blank=True, null=True)

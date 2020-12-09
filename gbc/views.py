@@ -40,9 +40,10 @@ def oauth_auth(request):
     ):
         return HttpResponseBadRequest()
 
-    brand = messaging.models.Brand.objects.filter(id=request.GET["client_id"]).first()
+    brand = models.Brand.objects.filter(id=request.GET["client_id"]).first()
     if not brand:
         return HttpResponseBadRequest()
+    brand = brand.brand
 
     if not brand.authorization_url or not brand.client_id:
         return HttpResponseBadRequest()

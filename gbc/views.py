@@ -1,6 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, reverse, redirect
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.conf import settings
 from django.core.files import File
@@ -20,8 +20,47 @@ import dateutil.parser
 import messaging.tasks
 
 
+@require_safe
 def oauth_auth(request):
-    return HttpResponse(status=200)
+    if not (
+        "client_id" in request.GET and "scope" in request.GET and "response_type" in request.GET
+        and "redirect_uri" in request.GET
+    ):
+        return HttpResponseBadRequest()
+
+    if request.GET["scope"] != "as207960-messaging-oauth" or request.GET["response_type"] != "code":
+        return HttpResponseBadRequest()
+
+    redirect_uri = request.GET["redirect_uri"].strip()
+    if redirect_uri not in (
+        "https://business.google.com/callback",
+        "https://business.google.com/callback?",
+        "https://business.google.com/message?az-intent-type=1",
+        "https://business.google.com/message?az-intent-type=1&",
+    ):
+        return HttpResponseBadRequest()
+
+    brand = messaging.models.Brand.objects.filter(id=request.GET["client_id"]).first()
+    if not brand:
+        return HttpResponseBadRequest()
+
+    if not brand.authorization_url or not brand.client_id:
+        return HttpResponseBadRequest()
+
+    auth_url = brand.authorization_url
+    auth_params = {
+        "client_id": brand.client_id,
+        "scope": "openid",
+        "response_type": "code",
+        "redirect_uri": settings.EXTERNAL_URL_BASE + reverse('messaging_oauth_redirect'),
+    }
+    url_parts = list(urllib.parse.urlparse(auth_url))
+    query_parts = dict(urllib.parse.parse_qsl(url_parts[4]))
+    query_parts.update(auth_params)
+    url_parts[4] = urllib.parse.urlencode(query_parts)
+    redirect_uri = urllib.parse.urlunparse(url_parts)
+
+    return redirect(redirect_uri)
 
 
 @csrf_exempt

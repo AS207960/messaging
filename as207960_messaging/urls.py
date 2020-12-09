@@ -23,6 +23,7 @@ urlpatterns = [
     path('gbc/', include('gbc.urls')),
     path('auth/', include('django_keycloak_auth.urls')),
     path('api/', include('messaging.api.urls')),
+    path('', include('messaging.urls')),
 ]
 
 if settings.DEBUG:

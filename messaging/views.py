@@ -15,7 +15,7 @@ def oauth_redirect(request):
 
         auth_url = state.redirect_uri
         auth_params = {
-            "state": str(auth_url.google_state)
+            "state": str(state.google_state)
         }
 
         if "error" in request.GET:

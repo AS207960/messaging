@@ -209,7 +209,7 @@ def bm_webhook(request):
     elif "surveyResponse" in body_json:
         new_message.media_type = "gbm_survey"
         new_message.content = body_json["surveyResponse"]
-    elif "authenticationResponse" is body_json:
+    elif "authenticationResponse" in body_json:
         if body_json["authenticationResponse"].get("code"):
             state = models.OAuthState.objects.filter(id=str(body_json["authenticationResponse"]["code"])).first()
             if state:

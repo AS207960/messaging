@@ -21,6 +21,7 @@ from django.conf import settings
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('gbc/', include('gbc.urls')),
+    path('rcs/', include('rcs.urls')),
     path('auth/', include('django_keycloak_auth.urls')),
     path('api/', include('messaging.api.urls')),
     path('', include('messaging.urls')),

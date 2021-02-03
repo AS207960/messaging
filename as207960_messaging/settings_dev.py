@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django_keycloak_auth',
     'rest_framework',
     'messaging',
-    'gbc'
+    'gbc',
+    'rcs'
 ]
 
 MIDDLEWARE = [
@@ -143,6 +144,8 @@ with open(BASE_DIR / "secrets/keycloak.json") as f:
     keycloak_conf = json.load(f)
 with open(BASE_DIR / "secrets/bm.json") as f:
     bm_conf = json.load(f)
+with open(BASE_DIR / "secrets/rcs.json") as f:
+    rcs_conf = json.load(f)
 
 KEYCLOAK_SERVER_URL = keycloak_conf["server_url"]
 KEYCLOAK_REALM = keycloak_conf["realm"]
@@ -151,6 +154,8 @@ OIDC_CLIENT_SECRET = keycloak_conf["client_secret"]
 OIDC_SCOPES = keycloak_conf["scopes"]
 
 GBC_PARTNER_KEY = bm_conf["secret"]
+
+RCS_WEBHOOK_TOKEN = rcs_conf["client_token"]
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [

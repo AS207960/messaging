@@ -101,6 +101,8 @@ spec:
               prefix: "CELERY_"
             - secretRef:
                 name: messaging-bm-partner-key-secret
+            - secretRef:
+                name: messaging-rcs-webhook-token
       containers:
         - name: gunicorn
           image: as207960/messaging-django:(version)
@@ -130,7 +132,7 @@ spec:
                 name: messaging-celery
               prefix: "CELERY_"
             - secretRef:
-                name: messaging-bm-partner-key-secret
+                name: messaging-rcs-webhook-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -193,6 +195,122 @@ spec:
               prefix: "CELERY_"
             - secretRef:
                 name: messaging-bm-partner-key-secret
+            - secretRef:
+                name: messaging-rcs-webhook-token
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: messaging-update-msisdn
+spec:
+  schedule: "04 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+        spec:
+          volumes:
+            - name: static
+              persistentVolumeClaim:
+                claimName: messaging-django-static
+            - name: media
+              persistentVolumeClaim:
+                claimName: messaging-django-media
+            - name: google-bm-creds
+              secret:
+                secretName: messaging-google-bm-creds
+          containers:
+            - name: django
+              image: as207960/messaging-django:(version)
+              imagePullPolicy: Always
+              command: ["sh", "-c", "python3 manage.py update-msisdn"]
+              ports:
+                - containerPort: 50051
+              volumeMounts:
+                - mountPath: "/app/static/"
+                  name: static
+                - mountPath: "/app/media/"
+                  name: media
+                - mountPath: "/google-bm-creds/"
+                  name: google-bm-creds
+              envFrom:
+                - configMapRef:
+                    name: messaging-django-conf
+                - secretRef:
+                    name: messaging-db-creds
+                  prefix: "DB_"
+                - secretRef:
+                    name: messaging-django-secret
+                - secretRef:
+                    name: messaging-keycloak
+                  prefix: "KEYCLOAK_"
+                - secretRef:
+                    name: messaging-celery
+                  prefix: "CELERY_"
+                - secretRef:
+                    name: messaging-bm-partner-key-secret
+                - secretRef:
+                    name: messaging-rcs-webhook-token
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: messaging-revoke-offline
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            cni.projectcalico.org/ipv6pools: "[\"default-ipv6-ippool\"]"
+        spec:
+          volumes:
+            - name: static
+              persistentVolumeClaim:
+                claimName: messaging-django-static
+            - name: media
+              persistentVolumeClaim:
+                claimName: messaging-django-media
+            - name: google-bm-creds
+              secret:
+                secretName: messaging-google-bm-creds
+          containers:
+            - name: django
+              image: as207960/messaging-django:(version)
+              imagePullPolicy: Always
+              command: ["sh", "-c", "python3 manage.py revoke-offline"]
+              ports:
+                - containerPort: 50051
+              volumeMounts:
+                - mountPath: "/app/static/"
+                  name: static
+                - mountPath: "/app/media/"
+                  name: media
+                - mountPath: "/google-bm-creds/"
+                  name: google-bm-creds
+              envFrom:
+                - configMapRef:
+                    name: messaging-django-conf
+                - secretRef:
+                    name: messaging-db-creds
+                  prefix: "DB_"
+                - secretRef:
+                    name: messaging-django-secret
+                - secretRef:
+                    name: messaging-keycloak
+                  prefix: "KEYCLOAK_"
+                - secretRef:
+                    name: messaging-celery
+                  prefix: "CELERY_"
+                - secretRef:
+                    name: messaging-bm-partner-key-secret
+                - secretRef:
+                    name: messaging-rcs-webhook-token
+          restartPolicy: OnFailure
 ---
 apiVersion: v1
 kind: Service

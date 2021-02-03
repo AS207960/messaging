@@ -1,9 +1,15 @@
 from celery import shared_task
 import messaging.models
+import messaging.tasks
 import google.oauth2.service_account
 import google.auth.transport.requests
 from django.conf import settings
+from django.shortcuts import reverse
 import secrets
+import urllib.parse
+import dateutil.parser
+import json
+import base64
 
 credentials = google.oauth2.service_account.Credentials.from_service_account_file(
     settings.GBM_SERVICE_ACCOUNT_FILE,
@@ -80,6 +86,7 @@ def send_message(message_id):
 
             body["suggestions"] = []
             for option in message.content["options"]:
+                suggestion = None
                 if not ("media_type" in option, "content" in option):
                     message.state = message.STATE_FAILED
                     message.error_description = "Invalid message"
@@ -125,6 +132,45 @@ def send_message(message_id):
                             }
                         }
                     }
+                elif option["media_type"] == "location":
+                    content = option["content"]
+                    if not ("lat_long" in content or "query" in content and "text" in content):
+                        message.state = message.STATE_FAILED
+                        message.error_description = "Invalid message"
+                        message.save()
+                        return
+                    if "query" in content:
+                        query = urllib.parse.quote_plus(content["query"])
+                        fallback_url = f"https://www.google.com/maps/search/?api=1&query={query}"
+                    else:
+                        lat_long = content['lat_long']
+                        fallback_url = f"https://www.google.com/maps/search/?api=1&" \
+                                       f"query={lat_long['latitude']},{lat_long['longitude']}"
+                    suggestion = {
+                        "action": {
+                            "text": content["text"],
+                            "postbackData": option.get("postback", content["text"]),
+                            "openUrlAction": {
+                                "url": fallback_url
+                            }
+                        }
+                    }
+                elif option["media_type"] == "share_location":
+                    pass
+                elif option["media_type"] == "calendar_event":
+                    content = option["content"]
+                    if (fallback_url := messaging.tasks.make_calendar_fallback(message, content)) is not None:
+                        suggestion = {
+                            "action": {
+                                "text": content["text"],
+                                "postbackData": option.get("postback", content["text"]),
+                                "openUrlAction": {
+                                    "url": fallback_url
+                                }
+                            }
+                        }
+                    else:
+                        return
                 elif option["media_type"] == "login":
                     suggestion = {
                         "authenticationRequest": {
@@ -137,11 +183,12 @@ def send_message(message_id):
                     }
                 else:
                     message.state = message.STATE_FAILED
-                    message.error_description = "Invalid message"
+                    message.error_description = "Unsupported suggestion type"
                     message.save()
                     return
 
-                body["suggestions"].append(suggestion)
+                if suggestion:
+                    body["suggestions"].append(suggestion)
         else:
             message.state = message.STATE_FAILED
             message.error_description = "Invalid message"

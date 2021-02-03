@@ -75,8 +75,10 @@ class Representative(models.Model):
 
 class Message(models.Model):
     PLATFORM_GBM = "google-business-messaging"
+    PLATFORM_RCS = "rcs-business-messaging"
     PLATFORMS = (
         (PLATFORM_GBM, "Google Business Messaging"),
+        (PLATFORM_RCS, "RCS Business Messaging"),
     )
 
     DIRECTION_INCOMING = "I"

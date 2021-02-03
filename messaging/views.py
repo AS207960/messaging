@@ -2,6 +2,11 @@ from django.http import HttpResponse, HttpResponseBadRequest
 import gbc.models
 from django.shortcuts import redirect
 import urllib.parse
+import json
+import binascii
+import base64
+import datetime
+import ics
 
 
 def oauth_redirect(request):
@@ -36,3 +41,20 @@ def oauth_redirect(request):
         return redirect(redirect_uri)
     else:
         return HttpResponseBadRequest()
+
+
+def calendar_event(request, event_data):
+    try:
+        event_data = json.loads(base64.urlsafe_b64decode(event_data))
+    except (binascii.Error, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+
+    cal = ics.Calendar()
+    event = ics.Event()
+    event.begin = datetime.datetime.utcfromtimestamp(event_data["start"])
+    event.end = datetime.datetime.utcfromtimestamp(event_data["end"])
+    event.name = event_data["title"]
+    event.description = event_data["description"]
+    cal.events.add(event)
+
+    return HttpResponse(str(cal), status=200, content_type="text/calendar")

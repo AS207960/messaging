@@ -2,11 +2,43 @@ from celery import shared_task
 from . import models
 from .api import serializers
 from django.conf import settings
+from django.shortcuts import reverse
 import gbc.tasks
+import rcs.tasks
 import collections
 import json
 import hmac
 import requests
+import dateutil.parser
+import base64
+
+
+def make_calendar_fallback(message, content):
+    if not (
+            "start_time" in content and "end_time" in content and
+            "title" in content and "description" in content and
+            "text" in content
+    ):
+        message.state = message.STATE_FAILED
+        message.error_description = "Invalid message"
+        message.save()
+        return
+
+    try:
+        start_time = dateutil.parser.parse(content["start_time"])
+        end_time = dateutil.parser.parse(content["end_time"])
+    except dateutil.parser.ParserError:
+        message.state = message.STATE_FAILED
+        message.error_description = "Invalid message"
+        message.save()
+        return
+    calendar_data = base64.urlsafe_b64encode(json.dumps({
+        "start": int(start_time.timestamp()),
+        "end": int(end_time.timestamp()),
+        "title": content["title"],
+        "description": content["description"]
+    }).encode()).decode()
+    return settings.EXTERNAL_URL_BASE + reverse('messaging:calendar_event', args=(calendar_data,))
 
 
 @shared_task(ignore_result=True)
@@ -16,6 +48,8 @@ def process_message(message_id):
     if message.direction == message.DIRECTION_OUTGOING:
         if message.platform == message.PLATFORM_GBM:
             gbc.tasks.send_message.delay(message.id)
+        elif message.platform == message.PLATFORM_RCS:
+            rcs.tasks.send_message.delay(message.id)
     elif message.direction == message.DIRECTION_INCOMING:
         send_message.delay(message.id)
 

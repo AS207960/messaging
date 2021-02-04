@@ -55,7 +55,13 @@ def send_message(message_id):
         message.save()
         return
 
-    agent_obj = message.brand.rcs_agent
+    try:
+        agent_obj = message.brand.rcs_agent
+    except message.brand.DoesNotExist:
+        message.state = message.STATE_FAILED
+        message.error_description = "Brand does not support RCS"
+        message.save()
+        return
 
     base_url = f"https://{agent_obj.region}-rcsbusinessmessaging.googleapis.com"
 

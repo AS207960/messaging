@@ -4,12 +4,8 @@ import messaging.tasks
 import google.oauth2.service_account
 import google.auth.transport.requests
 from django.conf import settings
-from django.shortcuts import reverse
 import secrets
 import urllib.parse
-import dateutil.parser
-import json
-import base64
 
 credentials = google.oauth2.service_account.Credentials.from_service_account_file(
     settings.GBM_SERVICE_ACCOUNT_FILE,
@@ -28,6 +24,7 @@ def send_message(message_id):
     related_messages = messaging.models.Message.objects.filter(
         direction=messaging.models.Message.DIRECTION_INCOMING,
         platform_conversation_id=message.platform_conversation_id,
+        brand=message.brand
     ).count()
 
     if related_messages == 0:

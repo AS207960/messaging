@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django_keycloak_auth',
     'rest_framework',
     'messaging',
-    'gbc'
+    'gbc',
+    'rcs'
 ]
 
 MIDDLEWARE = [

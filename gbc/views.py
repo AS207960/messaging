@@ -190,7 +190,6 @@ def bm_webhook(request):
                 new_metadata.update(metadata)
                 ref_message.metadata = new_metadata
                 ref_message.save()
-
                 messaging.tasks.send_message.delay(ref_message.id)
 
         return HttpResponse(status=200)

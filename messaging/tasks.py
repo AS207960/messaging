@@ -41,6 +41,32 @@ def make_calendar_fallback(message, content):
     return settings.EXTERNAL_URL_BASE + reverse('messaging:calendar_event', args=(calendar_data,))
 
 
+def shorten_link(brand: models.Brand, link: str, short=True, title=None, description=None, image_url=None):
+    r = requests.post(
+        "https://firebasedynamiclinks.googleapis.com/v1/shortLinks",
+        params={
+            "key": settings.FIREBASE_API_KEY
+        },
+        json={
+            "dynamicLinkInfo": {
+                "domainUriPrefix": brand.firebase_short_domain
+                if brand.firebase_short_domain else "https://l.as207960.net",
+                "link": link,
+                "socialMetaTagInfo": {
+                    "socialTitle": title,
+                    "socialDescription": description,
+                    "socialImageLink": image_url,
+                }
+            },
+            "suffix": {
+                "option": "SHORT" if short else "UNGUESSABLE"
+            }
+        }
+    )
+    r.raise_for_status()
+    return r.json().get("shortLink")
+
+
 @shared_task(ignore_result=True)
 def process_message(message_id):
     message = models.Message.objects.get(id=message_id)
@@ -48,7 +74,7 @@ def process_message(message_id):
     if message.direction == message.DIRECTION_OUTGOING:
         if message.platform == message.PLATFORM_GBM:
             gbc.tasks.send_message.delay(message.id)
-        elif message.platform == message.PLATFORM_RCS:
+        elif message.platform == message.PLATFORM_MSISDN:
             rcs.tasks.send_message.delay(message.id)
     elif message.direction == message.DIRECTION_INCOMING:
         send_message.delay(message.id)

@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'messaging',
     'gbc',
-    'rcs'
+    'rcs',
+    'sms'
 ]
 
 MIDDLEWARE = [
@@ -151,9 +152,12 @@ OIDC_CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET")
 OIDC_SCOPES = os.getenv("KEYCLOAK_SCOPES")
 
 GBM_SERVICE_ACCOUNT_FILE = os.getenv("BM_SA_LOCATION")
+VSMS_SERVICE_ACCOUNT_FILE = os.getenv("VSMS_SA_LOCATION")
 GBC_PARTNER_KEY = os.getenv("BM_PARTNER_KEY")
 
 RCS_WEBHOOK_TOKEN = os.getenv("RCS_WEBHOOK_TOKEN")
+
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")
 
 PAT_URL = os.getenv("PAT_URL")
 

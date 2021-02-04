@@ -16,6 +16,7 @@ class Brand(models.Model):
     resource_id = models.UUIDField(null=True, db_index=True)
     authorization_url = models.URLField(blank=True, null=True)
     client_id = models.CharField(max_length=255, blank=True, null=True)
+    firebase_short_domain = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -75,10 +76,10 @@ class Representative(models.Model):
 
 class Message(models.Model):
     PLATFORM_GBM = "google-business-messaging"
-    PLATFORM_RCS = "rcs-business-messaging"
+    PLATFORM_MSISDN = "msisdn-messaging"
     PLATFORMS = (
         (PLATFORM_GBM, "Google Business Messaging"),
-        (PLATFORM_RCS, "RCS Business Messaging"),
+        (PLATFORM_MSISDN, "MSISDN Messaging"),
     )
 
     DIRECTION_INCOMING = "I"

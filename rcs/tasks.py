@@ -1,6 +1,7 @@
 from celery import shared_task
 import messaging.models
 import messaging.tasks
+import sms.tasks
 import google.oauth2.service_account
 import google.auth.transport.requests
 from django.conf import settings
@@ -9,6 +10,7 @@ import json
 import dateutil.parser
 import datetime
 import phonenumbers
+import uuid
 from . import models
 
 SCOPES = ["https://www.googleapis.com/auth/rcsbusinessmessaging"]
@@ -19,6 +21,7 @@ def map_file(message, content):
         message.state = message.STATE_FAILED
         message.error_description = "Invalid message"
         message.save()
+        messaging.tasks.send_message.delay(message.id)
         return
 
     return {
@@ -44,8 +47,55 @@ def update_msisdn_features(features, msisdn: models.MSISDN):
     autoretry_for=(Exception,), retry_backoff=1, retry_backoff_max=60, max_retries=None, default_retry_delay=3,
     ignore_result=True
 )
+def attempt_update_msisdn(brand_id, msisdn):
+    brand = messaging.models.Brand.objects.get(id=brand_id)
+
+    try:
+        number = phonenumbers.parse(msisdn)
+    except phonenumbers.phonenumberutil.NumberParseException:
+        return
+
+    try:
+        agent_obj = brand.rcs_agent
+    except brand.DoesNotExist:
+        return
+
+    base_url = f"https://{agent_obj.region}-rcsbusinessmessaging.googleapis.com"
+
+    credentials = google.oauth2.service_account.Credentials.from_service_account_info(
+        json.loads(agent_obj.service_account_key),
+        scopes=SCOPES
+    )
+    session = google.auth.transport.requests.AuthorizedSession(credentials)
+    msisdn = phonenumbers.format_number(number, phonenumbers.PhoneNumberFormat.E164)
+
+    session.post(
+        f"{base_url}/v1/phones/{msisdn}/capability:requestCapabilityCallback",
+        json={
+            "requestId": str(uuid.uuid4())
+        }
+    )
+
+
+@shared_task(
+    autoretry_for=(Exception,), retry_backoff=1, retry_backoff_max=60, max_retries=None, default_retry_delay=3,
+    ignore_result=True
+)
 def send_message(message_id):
     message = messaging.models.Message.objects.get(id=message_id)
+
+    if "msisdn.desired_transport" in message.content:
+        if message.content["msisdn.desired_transport"] == "rcs":
+            pass
+        elif message.content["msisdn.desired_transport"] == "sms":
+            sms.tasks.send_message.delay(message.id)
+            return
+        else:
+            message.state = message.STATE_FAILED
+            message.error_description = "Unknown transport"
+            message.save()
+            messaging.tasks.send_message.delay(message.id)
+            return
 
     try:
         phonenumbers.parse(message.platform_conversation_id)
@@ -53,6 +103,7 @@ def send_message(message_id):
         message.state = message.STATE_FAILED
         message.error_description = "Invalid MSISDN"
         message.save()
+        messaging.tasks.send_message.delay(message.id)
         return
 
     try:
@@ -61,6 +112,7 @@ def send_message(message_id):
         message.state = message.STATE_FAILED
         message.error_description = "Brand does not support RCS"
         message.save()
+        messaging.tasks.send_message.delay(message.id)
         return
 
     base_url = f"https://{agent_obj.region}-rcsbusinessmessaging.googleapis.com"
@@ -74,7 +126,7 @@ def send_message(message_id):
     msisdn = models.MSISDN.objects.filter(agent=agent_obj, msisdn=message.platform_conversation_id).first()
     if not msisdn:
         r = session.get(f"{base_url}/v1/phones/{message.platform_conversation_id}/capabilities?requestId={message.id}")
-        if r.status_code == 404:
+        if r.status_code in (404, 403):
             msisdn = models.MSISDN(agent=agent_obj, msisdn=message.platform_conversation_id, supports_rcs=False)
             msisdn.save()
         else:
@@ -83,11 +135,21 @@ def send_message(message_id):
             update_msisdn_features(r.json().get("features", []), msisdn)
 
     if not msisdn.supports_rcs:
-        message.state = message.STATE_FAILED
-        message.error_description = "MSISDN does not support RCS"
-        message.save()
+        try:
+            _sms_agent_obj = message.brand.sms_agent
+        except message.brand.DoesNotExist:
+            message.state = message.STATE_FAILED
+            message.error_description = "MSISDN does not support RCS"
+            message.save()
+            messaging.tasks.send_message.delay(message.id)
+            return
+
+        sms.tasks.send_message.delay(message.id)
         return
 
+    message.metadata["msisdn.transport"] = "rcs"
+    message.save()
+    messaging.tasks.send_message.delay(message.id)
     body = {}
 
     if message.media_type == "chat_state":
@@ -105,6 +167,8 @@ def send_message(message_id):
         else:
             message.state = message.STATE_FAILED
             message.error_description = "Invalid message"
+            message.save()
+            messaging.tasks.send_message.delay(message.id)
             return
     else:
         body["contentMessage"] = {}
@@ -123,6 +187,7 @@ def send_message(message_id):
                 message.state = message.STATE_FAILED
                 message.error_description = "Invalid message"
                 message.save()
+                messaging.tasks.send_message.delay(message.id)
                 return
 
             if message.content["media_type"] == "text":
@@ -141,6 +206,7 @@ def send_message(message_id):
                     message.state = message.STATE_FAILED
                     message.error_description = "Invalid message"
                     message.save()
+                    messaging.tasks.send_message.delay(message.id)
                     return
 
                 if option["media_type"] == "text":
@@ -156,6 +222,7 @@ def send_message(message_id):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
+                        messaging.tasks.send_message.delay(message.id)
                         return
                     suggestion = {
                         "action": {
@@ -172,6 +239,7 @@ def send_message(message_id):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
+                        messaging.tasks.send_message.delay(message.id)
                         return
                     suggestion = {
                         "action": {
@@ -189,6 +257,7 @@ def send_message(message_id):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
+                        messaging.tasks.send_message.delay(message.id)
                         return
                     if "query" in content:
                         query = urllib.parse.quote_plus(content["query"])
@@ -225,6 +294,7 @@ def send_message(message_id):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
+                        messaging.tasks.send_message.delay(message.id)
                         return
 
                     fallback_url = messaging.tasks.make_calendar_fallback(message, content)
@@ -261,6 +331,7 @@ def send_message(message_id):
                     message.state = message.STATE_FAILED
                     message.error_description = "Invalid message"
                     message.save()
+                    messaging.tasks.send_message.delay(message.id)
                     return
 
                 body["contentMessage"]["suggestions"].append(suggestion)
@@ -269,6 +340,7 @@ def send_message(message_id):
             message.state = message.STATE_FAILED
             message.error_description = "Invalid message"
             message.save()
+            messaging.tasks.send_message.delay(message.id)
             return
 
     if url and body:
@@ -280,3 +352,4 @@ def send_message(message_id):
             message.state = message.STATE_DISPATCHED
             message.platform_message_id = r.json()["name"]
         message.save()
+        messaging.tasks.send_message.delay(message.id)

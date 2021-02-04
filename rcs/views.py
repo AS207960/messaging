@@ -1,12 +1,9 @@
-from django.shortcuts import render, reverse, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.conf import settings
-from django.core.files import File
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-import urllib.parse
 from . import models, tasks
 import os.path
 import requests
@@ -63,32 +60,34 @@ def rcs_webhook(request):
 
     if data_type == "event":
         if messaging.models.Message.objects.filter(
-                platform=messaging.models.Message.PLATFORM_RCS, platform_dedup_id=data_json["eventId"],
+                platform=messaging.models.Message.PLATFORM_MSISDN,
+                platform_dedup_id=f"rcs-event:{data_json['eventId']}",
                 platform_conversation_id=data_json["senderPhoneNumber"]
         ).first():
             return HttpResponse(status=202)
 
-        print(data_json)
         timestamp = dateutil.parser.parse(data_json["sendTime"])
 
         if data_json["eventType"] == "IS_TYPING":
             new_message = messaging.models.Message(
                 direction=messaging.models.Message.DIRECTION_INCOMING,
                 brand=agent_obj.brand,
-                platform=messaging.models.Message.PLATFORM_RCS,
+                platform=messaging.models.Message.PLATFORM_MSISDN,
                 platform_conversation_id=data_json["senderPhoneNumber"],
-                platform_dedup_id=data_json["eventId"],
+                platform_dedup_id=f"rcs-event:{data_json['eventId']}",
                 client_message_id=None,
                 timestamp=timestamp,
                 media_type="chat_state",
                 content={"state": "composing"},
-                metadata={}
+                metadata={
+                    "msisdn.transport": "rcs"
+                }
             )
             new_message.save()
             messaging.tasks.process_message.delay(new_message.id)
         elif data_json["eventType"] in ("DELIVERED", "READ"):
             ref_message = messaging.models.Message.objects.filter(
-                platform=messaging.models.Message.PLATFORM_RCS, id=data_json["messageId"]
+                platform=messaging.models.Message.PLATFORM_MSISDN, id=data_json["messageId"]
             ).first()
             if ref_message:
                 if data_json["eventType"] == "DELIVERED":
@@ -100,32 +99,34 @@ def rcs_webhook(request):
 
     elif data_type == "capabilities":
         msisdn, _ = models.MSISDN.objects.get_or_create(agent=agent_obj, msisdn=data_json["phoneNumber"])
-        if data_json["rbmEnabled"]:
+        if "rbmEnabled" in data_json and data_json["rbmEnabled"]:
             msisdn.supports_rcs = True
             tasks.update_msisdn_features(data_json["features"], msisdn)
         else:
-            msisdn.supports_rcs = True
+            msisdn.supports_rcs = False
             tasks.update_msisdn_features([], msisdn)
 
     elif data_type == "message":
         if messaging.models.Message.objects.filter(
-                platform=messaging.models.Message.PLATFORM_RCS, platform_dedup_id=data_json["messageId"],
+                platform=messaging.models.Message.PLATFORM_MSISDN,
+                platform_dedup_id=f"rcs-message:{data_json['messageId']}",
                 platform_conversation_id=data_json["senderPhoneNumber"]
         ).first():
             return HttpResponse(status=202)
 
-        print(data_json)
         timestamp = dateutil.parser.parse(data_json["sendTime"])
 
         new_message = messaging.models.Message(
             direction=messaging.models.Message.DIRECTION_INCOMING,
             brand=agent_obj.brand,
-            platform=messaging.models.Message.PLATFORM_RCS,
+            platform=messaging.models.Message.PLATFORM_MSISDN,
             platform_conversation_id=data_json["senderPhoneNumber"],
-            platform_dedup_id=data_json["messageId"],
+            platform_dedup_id=f"rcs-message:{data_json['messageId']}",
             client_message_id=None,
             timestamp=timestamp,
-            metadata={}
+            metadata={
+                "msisdn.transport": "rcs"
+            }
         )
 
         if "text" in data_json:
@@ -137,7 +138,6 @@ def rcs_webhook(request):
             file_name = data_json["userFile"]["payload"]["fileName"]
             file_type = data_json["userFile"]["payload"]["mimeType"]
             file_name_root, file_name_ext = os.path.splitext(file_name)
-            print(file_name_root, file_name_ext)
             if not file_name_ext:
                 file_name_ext = mimetypes.guess_extension(file_type, strict=False)
             file_name = file_name_root + file_name_ext

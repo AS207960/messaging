@@ -4,6 +4,7 @@ import datetime
 import rcs.models
 import messaging.models
 import rcs.tasks
+import sms.tasks
 import google.oauth2.service_account
 import google.auth.transport.requests
 import json
@@ -28,6 +29,4 @@ class Command(BaseCommand):
                 session.delete(
                     f"{base_url}/v1/phones/{message.platform_conversation_id}/agentMessages/{message.id}"
                 )
-                message.state = message.STATE_FAILED
-                message.error_description = "Message timeout"
-                message.save()
+                sms.tasks.send_message.delay(message.id)

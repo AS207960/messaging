@@ -13,3 +13,5 @@ git+https://github.com/AS207960/python-utils@85ce15b3e4b8a663efcf5b78d36cf44223d
 ics
 django-phonenumber-field
 phonenumbers
+twilio
+Cryptography

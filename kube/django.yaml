@@ -142,6 +142,8 @@ spec:
                 name: messaging-celery
               prefix: "CELERY_"
             - secretRef:
+                name: messaging-bm-partner-key-secret
+            - secretRef:
                 name: messaging-rcs-webhook-token
             - secretRef:
                 name: messaging-firebase-key

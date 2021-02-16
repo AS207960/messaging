@@ -17,7 +17,7 @@ class Agent(models.Model):
     id = as207960_utils.models.TypedUUIDField("messaging_smsagent", primary_key=True)
     msisdn = phonenumber_field.modelfields.PhoneNumberField()
     brand = models.OneToOneField(messaging.models.Brand, on_delete=models.CASCADE, related_name='sms_agent')
-    twilio_account = models.ForeignKey(TwilioAccount, on_delete=models.CASCADE, related_name='sms_agents')
+    twilio_account = models.ForeignKey(TwilioAccount, on_delete=models.PROTECT, related_name='sms_agents')
     vsms_agent_id = models.CharField(max_length=255, blank=True, null=True)
     vsms_private_key = models.TextField(blank=True, null=True)
 

@@ -70,7 +70,7 @@ def send_message(message_id):
         elif message.media_type == "gbm.card":
             body["richCard"] = message.content
         elif message.media_type == "select":
-            if not ("media_type" in message.content and "options" in message.content and "content" in message.content):
+            if not (type(message.content) is dict and "media_type" in message.content and "options" in message.content and "content" in message.content):
                 message.state = message.STATE_FAILED
                 message.error_description = "Invalid message"
                 message.save()
@@ -84,7 +84,7 @@ def send_message(message_id):
             body["suggestions"] = []
             for option in message.content["options"]:
                 suggestion = None
-                if not ("media_type" in option, "content" in option):
+                if not (type(option) is dict and "media_type" in option and "content" in option):
                     message.state = message.STATE_FAILED
                     message.error_description = "Invalid message"
                     message.save()
@@ -99,7 +99,7 @@ def send_message(message_id):
                     }
                 elif option["media_type"] == "url":
                     content = option["content"]
-                    if not ("url" in content and "text" in content):
+                    if not (type(content) is dict and "url" in content and "text" in content):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
@@ -115,7 +115,7 @@ def send_message(message_id):
                     }
                 elif option["media_type"] == "dial":
                     content = option["content"]
-                    if not ("number" in content and "text" in content):
+                    if not (type(content) is dict and "number" in content and "text" in content):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()
@@ -131,7 +131,7 @@ def send_message(message_id):
                     }
                 elif option["media_type"] == "location":
                     content = option["content"]
-                    if not ("lat_long" in content or "query" in content and "text" in content):
+                    if not (type(content) is dict and "lat_long" in content or "query" in content and "text" in content):
                         message.state = message.STATE_FAILED
                         message.error_description = "Invalid message"
                         message.save()

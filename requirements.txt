@@ -8,7 +8,7 @@ drf-nested-routers
 google-auth
 django-cockroachdb==3.1.*
 gunicorn
-git+https://github.com/AS207960/python-utils@e3fa7518adefb780263ef44ae017ea20a1175254
+git+https://github.com/AS207960/python-utils@bdddf03710b245d60f051a8e80eb943bb451bc34
 # git+https://github.com/TheEnbyperor/django-keycloak-auth@d0c11a4a5dec5dfc7730256b011bc86260dda5cf
 ics
 django-phonenumber-field

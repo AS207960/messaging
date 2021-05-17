@@ -68,7 +68,7 @@ def send_message(message_id):
 
     try:
         agent_obj = message.brand.sms_agent
-    except message.brand.DoesNotExist:
+    except models.Agent.DoesNotExist:
         message.state = message.STATE_FAILED
         message.error_description = "Brand does not support SMS"
         message.save()
@@ -79,9 +79,9 @@ def send_message(message_id):
     vsms_shared_key = None
 
     if vsms_public_key:
-        message.metadata["msisdn.vmsm"] = "user_enabled"
+        message.metadata["msisdn.vsms"] = "user_enabled"
     else:
-        message.metadata["msisdn.vmsm"] = "user_disabled"
+        message.metadata["msisdn.vsms"] = "user_disabled"
     message.metadata["msisdn.transport"] = "sms"
     message.save()
     messaging.tasks.send_message.delay(message.id)

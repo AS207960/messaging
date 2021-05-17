@@ -57,7 +57,7 @@ def attempt_update_msisdn(brand_id, msisdn):
 
     try:
         agent_obj = brand.rcs_agent
-    except brand.DoesNotExist:
+    except rcs.DoesNotExist:
         return
 
     base_url = f"https://{agent_obj.region}-rcsbusinessmessaging.googleapis.com"
@@ -108,11 +108,8 @@ def send_message(message_id):
 
     try:
         agent_obj = message.brand.rcs_agent
-    except message.brand.DoesNotExist:
-        message.state = message.STATE_FAILED
-        message.error_description = "Brand does not support RCS"
-        message.save()
-        messaging.tasks.send_message.delay(message.id)
+    except models.Agent.DoesNotExist:
+        sms.tasks.send_message.delay(message.id)
         return
 
     base_url = f"https://{agent_obj.region}-rcsbusinessmessaging.googleapis.com"

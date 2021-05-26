@@ -24,9 +24,11 @@ class Command(BaseCommand):
 
             for message in agent_obj.brand.message_set.filter(
                 state=messaging.models.Message.STATE_DISPATCHED,
+                platform=messaging.models.Message.PLATFORM_MSISDN,
                 timestamp__lt=message_expiry,
             ):
-                session.delete(
-                    f"{base_url}/v1/phones/{message.platform_conversation_id}/agentMessages/{message.id}"
-                )
-                sms.tasks.send_message.delay(message.id)
+                if message.metadata.get("msisdn.transport") == "rcs":
+                    session.delete(
+                        f"{base_url}/v1/phones/{message.platform_conversation_id}/agentMessages/{message.id}"
+                    )
+                    sms.tasks.send_message.delay(message.id)
